@@ -10,6 +10,10 @@ import gleam/result
 import gleam/string
 import gleam/uri
 
+pub type ListIssuesOption {
+  ListIssuesOption(total: String, fields: List(String))
+}
+
 pub type Issues {
   Issues(issues: List(Issue))
 }
@@ -104,8 +108,7 @@ const user = "totsawat@skilllane.com"
 
 pub fn fetch_issues(
   api_token jira_api_token: String,
-  total max_results: Int,
-  fields fields: List(String),
+  opts opts: ListIssuesOption,
 ) {
   let assert Ok(base_req) =
     request.to("https://skilllane.atlassian.net/rest/api/3/search/jql")
@@ -119,7 +122,7 @@ pub fn fetch_issues(
 
   let query =
     dict.new()
-    |> dict.insert("fields", fields |> string.join(","))
+    |> dict.insert("fields", opts.fields |> string.join(","))
     |> dict.to_list
 
   let req =
@@ -128,7 +131,7 @@ pub fn fetch_issues(
     |> request.prepend_header("Content-Type", "application/json")
     |> request.set_query([
       #("jql", "project = CBP"),
-      #("maxResults", string.inspect(max_results)),
+      #("maxResults", opts.total),
       ..query
     ])
 

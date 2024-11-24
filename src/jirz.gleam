@@ -1,18 +1,22 @@
 import argv
-import clip
-import clip/help
 import gleam/io
 import gleam/string
-import jira/cli as jira_cli
+import glenvy/dotenv
+import jira/cli
 
 pub fn main() {
-  let jira_issues =
-    jira_cli.command()
-    |> clip.help(help.simple("issues", "List issues"))
-    |> clip.run(argv.load().arguments)
+  let _ = dotenv.load()
 
-  case jira_issues {
-    Error(e) -> io.print_error(e)
-    Ok(issues) -> issues |> string.inspect |> io.println
+  case argv.load().arguments {
+    ["jira", "issues", ..opts] -> {
+      case opts {
+        ["list", ..params] -> {
+          params |> string.inspect |> io.println
+          cli.list_issues_command(params) |> string.inspect |> io.println
+        }
+        _ -> io.println("Unknown action")
+      }
+    }
+    _ -> io.println_error("Unknown command")
   }
 }
