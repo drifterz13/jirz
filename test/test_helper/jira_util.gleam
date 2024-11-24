@@ -14,7 +14,7 @@ pub fn create_mock_issue(
     fields: jira.IssueField(
       summary:,
       issue_type: jira.IssueType(name: get_issue_type(issue_type)),
-      sprint: [jira.Sprint(id: 756, name: "Test Sprint")],
+      sprint: option.Some([jira.Sprint(id: 756, name: "Test Sprint")]),
       resolved_date: option.None,
       assignee: jira.Assignee(display_name: "Tester") |> option.Some,
       priority: jira.Priority(name: "Medium") |> option.Some,

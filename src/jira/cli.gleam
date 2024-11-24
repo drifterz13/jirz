@@ -1,5 +1,6 @@
+import fmglee
 import gleam/bool
-import gleam/dict
+import gleam/dict.{type Dict}
 import gleam/int
 import gleam/io
 import gleam/list
@@ -23,14 +24,30 @@ const required_fields = [
 
 const default_total = 100
 
-fn get_valid_options(opts: List(String)) {
+const base_jql = "project in (CBP) AND created > 2024-06-30"
+
+fn build_jql_query(jql_dict: Dict(String, String)) {
+  use projects <- result.try(dict.get(jql_dict, "projects"))
+  use assignee <- result.try(dict.get(jql_dict, "assignee"))
+
+  fmglee.new(
+    "project in (%s) AND created > 2024-06-30 AND assignee = %s AND sprint in openSprints()",
+  )
+  |> fmglee.s(projects)
+  |> fmglee.s(assignee)
+  |> fmglee.try_build
+  |> result.replace_error(Nil)
+}
+
+fn get_valid_options(opts: List(String)) -> issue.ListIssuesOption {
   let opts_dict =
     list.sized_chunk(opts, 2)
     |> list.filter_map(fn(chunk) {
       case chunk {
         [key, value] -> {
           case key {
-            "--fields" | "--total" | "--jql" -> Ok(#(key, value))
+            "--fields" | "--total" | "--jql" | "--assignee" | "--projects" ->
+              Ok(#(key |> string.replace("--", ""), value))
             _ -> Error(Nil)
           }
         }
@@ -40,12 +57,19 @@ fn get_valid_options(opts: List(String)) {
     |> dict.from_list
 
   let total =
-    dict.get(opts_dict, "--total")
+    dict.get(opts_dict, "total")
     |> result.unwrap(int.to_string(default_total))
 
-  let jql = dict.get(opts_dict, "--jql") |> result.unwrap("project = CBP")
+  let jql =
+    {
+      case dict.get(opts_dict, "jql") {
+        Ok(query) -> query
+        Error(_) -> build_jql_query(opts_dict) |> result.unwrap(base_jql)
+      }
+    }
+    |> io.debug
 
-  case dict.get(opts_dict, "--fields") {
+  case dict.get(opts_dict, "fields") {
     Ok(fields) -> {
       let f =
         string.split(fields, ",") |> list.append(required_fields) |> list.unique
@@ -71,13 +95,14 @@ pub fn list_issues_command(opts: List(String)) -> Result(Issues, Error) {
     |> result.map_error(fn(_) { FetchJiraIssuesError })
   }
 
-  use resp <- result.try(fetch_issues_result)
-
-  io.debug(resp.body)
+  use resp <- result.try(fetch_issues_result |> io.debug)
 
   let decode_jira_issues =
     issue.issues_from_json(resp.body)
-    |> result.map_error(fn(_) { DecodingError })
+    |> result.map_error(fn(err) {
+      io.debug(err)
+      DecodingError
+    })
 
   use jira_issues <- result.try(decode_jira_issues)
   Ok(jira_issues)

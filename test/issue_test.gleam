@@ -56,7 +56,7 @@ pub fn issues_decode_test() {
         fields: IssueField(
           summary: "[Backend] - Support internal package (type, constant)",
           issue_type: IssueType(name: "Task"),
-          sprint: [Sprint(id: 756, name: "CBP Sprint 1")],
+          sprint: option.Some([Sprint(id: 756, name: "CBP Sprint 1")]),
           resolved_date: option.None,
           assignee: Assignee(display_name: "sarida") |> option.Some,
           priority: Priority(name: "Medium") |> option.Some,

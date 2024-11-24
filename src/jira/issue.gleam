@@ -27,7 +27,7 @@ pub type IssueField {
   IssueField(
     summary: String,
     issue_type: IssueType,
-    sprint: List(Sprint),
+    sprint: Option(List(Sprint)),
     resolved_date: Option(String),
     assignee: Option(Assignee),
     priority: Option(Priority),
@@ -81,7 +81,10 @@ fn issue_fields_decoder() -> dynamic.Decoder(IssueField) {
     IssueField,
     field("summary", of: string),
     field("issuetype", of: issue_type_decoder()),
-    field("customfield_10008", of: dynamic.list(sprint_decoder())),
+    field(
+      "customfield_10008",
+      of: dynamic.optional(dynamic.list(sprint_decoder())),
+    ),
     field("resolutiondate", of: dynamic.optional(string)),
     field("assignee", of: dynamic.optional(assignee_decoder())),
     field("priority", of: dynamic.optional(priority_decoder())),
