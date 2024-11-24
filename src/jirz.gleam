@@ -1,34 +1,18 @@
-import gleam/bool
+import argv
+import clip
+import clip/help
 import gleam/io
-import gleam/result
-import glenvy/dotenv
-import glenvy/env
-import jira/issue as jira
-
-pub type Error {
-  ConfigNotFoundError(String)
-  FetchJiraIssuesError
-  DecodingError
-}
+import gleam/string
+import jira/cli as jira_cli
 
 pub fn main() {
-  let _ = dotenv.load()
+  let jira_issues =
+    jira_cli.command()
+    |> clip.help(help.simple("issues", "List issues"))
+    |> clip.run(argv.load().arguments)
 
-  let assert Ok(jira_api_token) = env.get_string("JIRA_API_TOKEN")
-  use <- bool.guard(
-    jira_api_token == "",
-    ConfigNotFoundError("Missing JIRA_API_TOKEN") |> Error,
-  )
-
-  let fetch_issues_result =
-    jira.fetch_issues(jira_api_token)
-    |> result.map_error(fn(_) { FetchJiraIssuesError })
-
-  use resp <- result.try(fetch_issues_result)
-
-  let decode_jira_issues =
-    jira.issues_from_json(resp.body)
-    |> result.map_error(fn(_) { DecodingError })
-
-  io.debug(decode_jira_issues)
+  case jira_issues {
+    Error(e) -> io.print_error(e)
+    Ok(issues) -> issues |> string.inspect |> io.println
+  }
 }

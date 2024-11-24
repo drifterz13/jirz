@@ -21,13 +21,13 @@ pub type Issue {
 pub type RawIssueField {
   RawIssueField(
     summary: String,
-    issuetype: IssueType,
-    customfield_10008: List(Sprint),
-    resolutiondate: Option(String),
-    assignee: Assignee,
-    priority: Priority,
+    issue_type: IssueType,
+    sprint: List(Sprint),
+    resolved_date: Option(String),
+    assignee: Option(Assignee),
+    priority: Option(Priority),
     status: Status,
-    customfield_10067: Option(Float),
+    story_points: Option(Float),
   )
 }
 
@@ -78,8 +78,8 @@ fn issue_fields_decoder() -> dynamic.Decoder(RawIssueField) {
     field("issuetype", of: issue_type_decoder()),
     field("customfield_10008", of: dynamic.list(sprint_decoder())),
     field("resolutiondate", of: dynamic.optional(string)),
-    field("assignee", of: assignee_decoder()),
-    field("priority", of: priority_decoder()),
+    field("assignee", of: dynamic.optional(assignee_decoder())),
+    field("priority", of: dynamic.optional(priority_decoder())),
     field("status", of: status_decoder()),
     field("customfield_10067", of: dynamic.optional(float)),
   )
@@ -102,7 +102,11 @@ pub fn issues_from_json(json_string: String) -> Result(Issues, DecodeError) {
 
 const user = "totsawat@skilllane.com"
 
-pub fn fetch_issues(jira_api_token: String) {
+pub fn fetch_issues(
+  api_token jira_api_token: String,
+  total max_results: Int,
+  fields fields: List(String),
+) {
   let assert Ok(base_req) =
     request.to("https://skilllane.atlassian.net/rest/api/3/search/jql")
 
@@ -113,16 +117,9 @@ pub fn fetch_issues(jira_api_token: String) {
     |> bit_array.from_string
     |> bit_array.base64_encode(False)
 
-  let fields =
-    [
-      "issuetype", "assignee", "priority", "resolutiondate", "status", "summary",
-      "customfield_10008", "customfield_10067",
-    ]
-    |> string.join(",")
-
   let query =
     dict.new()
-    |> dict.insert("fields", fields)
+    |> dict.insert("fields", fields |> string.join(","))
     |> dict.to_list
 
   let req =
@@ -131,7 +128,7 @@ pub fn fetch_issues(jira_api_token: String) {
     |> request.prepend_header("Content-Type", "application/json")
     |> request.set_query([
       #("jql", "project = CBP"),
-      #("maxResults", "2"),
+      #("maxResults", string.inspect(max_results)),
       ..query
     ])
 
