@@ -1,6 +1,14 @@
+import gleam/bit_array
+import gleam/dict
 import gleam/dynamic.{field, float, int, string}
+import gleam/http/request
+import gleam/httpc
+import gleam/io
 import gleam/json.{type DecodeError}
 import gleam/option.{type Option}
+import gleam/result
+import gleam/string
+import gleam/uri
 
 pub type Issues {
   Issues(issues: List(Issue))
@@ -90,4 +98,45 @@ pub fn issues_from_json(json_string: String) -> Result(Issues, DecodeError) {
     dynamic.decode1(Issues, field("issues", of: dynamic.list(issue_decoder())))
 
   json.decode(json_string, issue_list_decoder)
+}
+
+const user = "totsawat@skilllane.com"
+
+pub fn fetch_issues(jira_api_token: String) {
+  let assert Ok(base_req) =
+    request.to("https://skilllane.atlassian.net/rest/api/3/search/jql")
+
+  let auth_token =
+    user
+    |> string.append(":")
+    |> string.append(jira_api_token)
+    |> bit_array.from_string
+    |> bit_array.base64_encode(False)
+
+  let fields =
+    [
+      "issuetype", "assignee", "priority", "resolutiondate", "status", "summary",
+      "customfield_10008", "customfield_10067",
+    ]
+    |> string.join(",")
+
+  let query =
+    dict.new()
+    |> dict.insert("fields", fields)
+    |> dict.to_list
+
+  let req =
+    base_req
+    |> request.prepend_header("Authorization", "Basic " <> auth_token)
+    |> request.prepend_header("Content-Type", "application/json")
+    |> request.set_query([
+      #("jql", "project = CBP"),
+      #("maxResults", "2"),
+      ..query
+    ])
+
+  io.debug("Request URI: " <> request.to_uri(req) |> uri.to_string)
+
+  use resp <- result.try(httpc.send(req))
+  Ok(resp)
 }
