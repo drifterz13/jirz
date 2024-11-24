@@ -34,15 +34,13 @@ pub fn main() {
     |> result.map_error(fn(_) { FetchJiraIssuesError })
 
   use resp <- result.try(fetch_issues_result)
+  io.debug(resp.body)
+
   let decode_jira_issues =
     jira.issues_from_json(resp.body)
-    |> result.map_error(fn(e) {
-      let _ = io.debug(e)
-      DecodingError
-    })
+    |> result.map_error(fn(_) { DecodingError })
 
-  let _ = io.debug(decode_jira_issues)
-  Ok(Nil)
+  io.debug(decode_jira_issues)
 }
 
 fn fetch_issues(jira_api_token: String) {
