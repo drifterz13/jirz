@@ -1,7 +1,7 @@
 import gleam/option
 import gleeunit/should
 import jira/issue.{
-  Assignee, Issue, IssueType, Issues, Priority, RawIssueField, Sprint, Status,
+  Assignee, Issue, IssueField, IssueType, Issues, Priority, Sprint, Status,
   issues_from_json,
 }
 
@@ -53,7 +53,7 @@ pub fn issues_decode_test() {
     Issues(issues: [
       Issue(
         key: "CBP-206",
-        fields: RawIssueField(
+        fields: IssueField(
           summary: "[Backend] - Support internal package (type, constant)",
           issue_type: IssueType(name: "Task"),
           sprint: [Sprint(id: 756, name: "CBP Sprint 1")],

@@ -11,7 +11,7 @@ import gleam/string
 import gleam/uri
 
 pub type ListIssuesOption {
-  ListIssuesOption(total: String, fields: List(String))
+  ListIssuesOption(total: String, fields: List(String), jql: String)
 }
 
 pub type Issues {
@@ -19,11 +19,12 @@ pub type Issues {
 }
 
 pub type Issue {
-  Issue(key: String, fields: RawIssueField)
+  Issue(key: String, fields: IssueField)
 }
 
-pub type RawIssueField {
-  RawIssueField(
+/// Update this type if you want to add more fields
+pub type IssueField {
+  IssueField(
     summary: String,
     issue_type: IssueType,
     sprint: List(Sprint),
@@ -75,9 +76,9 @@ fn status_decoder() -> dynamic.Decoder(Status) {
   dynamic.decode2(Status, field("id", of: string), field("name", of: string))
 }
 
-fn issue_fields_decoder() -> dynamic.Decoder(RawIssueField) {
+fn issue_fields_decoder() -> dynamic.Decoder(IssueField) {
   dynamic.decode8(
-    RawIssueField,
+    IssueField,
     field("summary", of: string),
     field("issuetype", of: issue_type_decoder()),
     field("customfield_10008", of: dynamic.list(sprint_decoder())),
@@ -130,7 +131,7 @@ pub fn fetch_issues(
     |> request.prepend_header("Authorization", "Basic " <> auth_token)
     |> request.prepend_header("Content-Type", "application/json")
     |> request.set_query([
-      #("jql", "project = CBP"),
+      #("jql", opts.jql),
       #("maxResults", opts.total),
       ..query
     ])

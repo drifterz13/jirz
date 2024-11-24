@@ -1,14 +1,18 @@
 import gleam/bool
 import gleam/dict
+import gleam/int
+import gleam/io
 import gleam/list
 import gleam/result
 import gleam/string
 import glenvy/env
 import jira/issue.{type Issues, ListIssuesOption}
+import jira/report
 
 pub type Error {
   ConfigNotFoundError(String)
   FetchJiraIssuesError
+  GetJiraReportError
   DecodingError
 }
 
@@ -17,6 +21,8 @@ const required_fields = [
   "customfield_10008", "customfield_10067",
 ]
 
+const default_total = 100
+
 fn get_valid_options(opts: List(String)) {
   let opts_dict =
     list.sized_chunk(opts, 2)
@@ -24,7 +30,7 @@ fn get_valid_options(opts: List(String)) {
       case chunk {
         [key, value] -> {
           case key {
-            "--fields" | "--total" -> Ok(#(key, value))
+            "--fields" | "--total" | "--jql" -> Ok(#(key, value))
             _ -> Error(Nil)
           }
         }
@@ -35,16 +41,18 @@ fn get_valid_options(opts: List(String)) {
 
   let total =
     dict.get(opts_dict, "--total")
-    |> result.unwrap("10")
+    |> result.unwrap(int.to_string(default_total))
+
+  let jql = dict.get(opts_dict, "--jql") |> result.unwrap("project = CBP")
 
   case dict.get(opts_dict, "--fields") {
     Ok(fields) -> {
       let f =
         string.split(fields, ",") |> list.append(required_fields) |> list.unique
-      ListIssuesOption(total:, fields: f)
+      ListIssuesOption(total:, fields: f, jql:)
     }
     Error(_) -> {
-      ListIssuesOption(total: total, fields: required_fields)
+      ListIssuesOption(total: total, fields: required_fields, jql:)
     }
   }
 }
@@ -65,7 +73,7 @@ pub fn list_issues_command(opts: List(String)) -> Result(Issues, Error) {
 
   use resp <- result.try(fetch_issues_result)
 
-  // io.debug(resp.body)
+  io.debug(resp.body)
 
   let decode_jira_issues =
     issue.issues_from_json(resp.body)
@@ -73,4 +81,10 @@ pub fn list_issues_command(opts: List(String)) -> Result(Issues, Error) {
 
   use jira_issues <- result.try(decode_jira_issues)
   Ok(jira_issues)
+}
+
+pub fn report_issues_command(opts: List(String)) -> Result(report.Report, Error) {
+  use list_issues <- result.try(list_issues_command(opts))
+  let gen_report = report.generate_report(list_issues.issues)
+  Ok(gen_report)
 }
